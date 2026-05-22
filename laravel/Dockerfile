@@ -21,6 +21,7 @@ FROM php:8.4-fpm-alpine
 WORKDIR /var/www/html
 
 RUN apk add --no-cache bash curl sqlite
+RUN printf 'expose_php=Off\n' > /usr/local/etc/php/conf.d/security.ini
 
 COPY --from=vendor /app/vendor ./vendor
 COPY --from=assets /app/public/build ./public/build

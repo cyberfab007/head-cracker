@@ -123,32 +123,32 @@ code {
 
 .topbar {
   display: grid;
-  grid-template-columns: minmax(460px, 1.2fr) auto minmax(220px, auto);
+  grid-template-columns: minmax(552px, 1.25fr) auto minmax(264px, auto);
   align-items: center;
-  gap: 24px;
-  margin-bottom: 30px;
+  gap: 29px;
+  margin-bottom: 36px;
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 29px;
   min-width: 0;
 }
 
 .brand img {
-  width: clamp(132px, 12vw, 190px);
-  height: clamp(132px, 12vw, 190px);
+  width: clamp(158px, 14.4vw, 228px);
+  height: clamp(158px, 14.4vw, 228px);
   object-fit: contain;
   flex: 0 0 auto;
   filter:
-    drop-shadow(0 0 18px rgba(32, 230, 255, 0.58))
-    drop-shadow(0 0 34px rgba(255, 44, 122, 0.22));
+    drop-shadow(0 0 22px rgba(32, 230, 255, 0.62))
+    drop-shadow(0 0 41px rgba(255, 44, 122, 0.26));
 }
 
 .brand h1 {
   margin: 0;
-  font-size: clamp(42px, 5.5vw, 84px);
+  font-size: clamp(50px, 6.6vw, 101px);
   line-height: 0.9;
   letter-spacing: 0;
   text-transform: uppercase;
@@ -588,8 +588,8 @@ code {
   }
 
   .brand img {
-    width: clamp(112px, 26vw, 150px);
-    height: clamp(112px, 26vw, 150px);
+    width: clamp(134px, 31vw, 180px);
+    height: clamp(134px, 31vw, 180px);
   }
 
   .control-row,
@@ -614,11 +614,11 @@ code {
   }
 
   .brand img {
-    width: 156px;
-    height: 156px;
+    width: 187px;
+    height: 187px;
   }
 
   .brand h1 {
-    font-size: clamp(38px, 14vw, 58px);
+    font-size: clamp(46px, 16vw, 70px);
   }
 }

@@ -19,6 +19,7 @@ Unity later  -> can consume the same saved trace format
 - Engine API: `http://localhost:8000`
 - Engine health: `http://localhost:8000/health`
 - Engine metadata: `http://localhost:8000/meta?model_id=gpt2&driver_key=tl_gpt`
+- Production domain target: `https://headcraker.jeremyfabiano.com`
 
 ## Run With Docker
 
@@ -82,6 +83,17 @@ Python syntax check:
 ```bash
 python3 -m py_compile engine/app/server.py engine/app/schemas.py engine/app/drivers/base.py engine/app/drivers/tl_gpt.py
 ```
+
+Dependency security checks:
+
+```bash
+docker run --rm -v "$PWD/laravel":/app -w /app composer:2 composer audit --locked
+docker run --rm -v "$PWD/laravel":/app -w /app node:24-alpine sh -lc "npm audit --omit=dev"
+```
+
+## Production Security Notes
+
+For `https://headcraker.jeremyfabiano.com`, generate a fresh `APP_KEY`, keep `APP_DEBUG=false`, serve only over HTTPS, and keep `.env` outside source control. The Laravel app sets security headers, denies framing, uses a restrictive CSP for the public domain and local dev endpoints, enables HSTS on secure requests, and throttles prompt-run API routes. The engine WebSocket should be reverse-proxied behind HTTPS/WSS before public launch.
 
 ## Current Run Flow
 
