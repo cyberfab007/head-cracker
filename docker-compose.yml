@@ -1,0 +1,44 @@
+services:
+  laravel-app:
+    build:
+      context: ./laravel
+    ports:
+      - "8080:8000"
+    environment:
+      APP_NAME: HeadCracker
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8080
+      LOG_CHANNEL: stderr
+      DB_CONNECTION: sqlite
+      DB_DATABASE: /var/www/html/database/database.sqlite
+      CACHE_STORE: database
+      SESSION_DRIVER: database
+      QUEUE_CONNECTION: database
+      HEADCRACKER_ENGINE_HTTP: http://engine:8000
+      HEADCRACKER_ENGINE_WS_PUBLIC: ws://localhost:8000
+      HEADCRACKER_DEMO_GUEST_ID: HC-DEMO-LOCAL
+    depends_on:
+      - engine
+
+  engine:
+    build:
+      context: ./engine
+    ports:
+      - "8000:8000"
+    environment:
+      HF_HOME: /cache/huggingface
+      TORCH_HOME: /cache/torch
+    volumes:
+      - hf-cache:/cache/huggingface
+      - torch-cache:/cache/torch
+
+volumes:
+  hf-cache:
+  torch-cache:
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 10.252.0.0/24

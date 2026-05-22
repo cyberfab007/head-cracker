@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>AI Map UI</title>
+  <link rel="stylesheet" href="styles.css"><!-- <- use styles.css if that’s your file -->
+</head>
+<body>
+  <header>
+    <h1>AI Map</h1>
+    <div class="controls">
+      <textarea id="prompt" placeholder="Enter prompt here">Explain transformers simply.</textarea>
+<div class="row">
+    <label>Model
+  <input id="modelId" value="gpt2-xl">
+</label>
+
+  <label>Max tokens <input id="maxNew" type="number" value="64"></label>
+  <label>Layers <input id="layers" value="0,3,6,9"></label>
+<label>View
+  <select id="viewMode">
+    <option value="combined" selected>Combined</option>
+    <option value="tiled">Tiled by layer</option>
+    <option value="single">Single layer</option>
+  </select>
+</label>
+
+<label id="focusWrap" style="display:none;">
+  Focus layer
+  <select id="focusLayer"></select>
+</label>
+
+  <button id="startBtn">Start</button>
+  <button id="pauseBtn" disabled>Pause</button>
+  <button id="resumeBtn" disabled>Resume</button>
+  <button id="clearBtn">Clear</button>
+  <span id="status"></span>
+</div>
+  </header>
+
+  <main>
+    <section id="viz">
+      <div class="brain-wrap">
+        <canvas id="pixelMap" width="768" height="768"></canvas>
+        <div id="ticker" title="live output"></div>
+      </div>
+      <div class="timeline">
+        <input id="scrubber" type="range" min="0" max="0" value="0" step="1">
+        <div class="timeline-meta">
+          <span id="frameLabel">Frame 0/0</span>
+          <span id="tokenLabel"></span>
+        </div>
+      </div>
+    </section>
+
+    <section id="textout">
+      <h3>Generated Text</h3>
+      <pre id="text"></pre>
+    </section>
+  </main>
+
+  <footer>
+    <small>Space: Play/Pause • ←/→: Step • Drag the slider to scrub</small>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+fastapi==0.124.0
+uvicorn[standard]==0.38.0
+pydantic==2.13.3
+transformers==4.57.1
+transformer-lens==2.16.1
+websockets==15.0.1
+accelerate==1.12.0
