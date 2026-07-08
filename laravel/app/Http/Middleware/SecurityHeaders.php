@@ -19,7 +19,7 @@ class SecurityHeaders
         $response->headers->set('Content-Security-Policy', implode('; ', [
             "default-src 'self'",
             "base-uri 'self'",
-            "connect-src 'self' http://localhost:8000 ws://localhost:8000 https://headcraker.jeremyfabiano.com wss://headcraker.jeremyfabiano.com",
+            "connect-src 'self' http://localhost:8000 ws://localhost:8000 https://headcracker.jeremyfabiano.com wss://headcracker.jeremyfabiano.com",
             "font-src 'self' data:",
             "form-action 'self'",
             "frame-ancestors 'none'",

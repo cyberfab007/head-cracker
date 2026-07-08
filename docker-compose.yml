@@ -3,23 +3,23 @@ services:
     build:
       context: ./laravel
     ports:
-      - "8080:8000"
+      - "127.0.0.1:18100:8000"
     environment:
       APP_NAME: HeadCracker
-      APP_ENV: local
-      APP_DEBUG: "true"
-      APP_URL: http://localhost:8080
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_URL: https://headcracker.jeremyfabiano.com
       LOG_CHANNEL: stderr
       DB_CONNECTION: sqlite
       DB_DATABASE: /var/www/html/database/database.sqlite
       CACHE_STORE: database
       SESSION_DRIVER: database
-      SESSION_ENCRYPT: "false"
-      SESSION_DOMAIN: ""
-      SESSION_SECURE_COOKIE: "false"
+      SESSION_ENCRYPT: "true"
+      SESSION_DOMAIN: ".headcracker.jeremyfabiano.com"
+      SESSION_SECURE_COOKIE: "true"
       QUEUE_CONNECTION: database
       HEADCRACKER_ENGINE_HTTP: http://engine:8000
-      HEADCRACKER_ENGINE_WS_PUBLIC: ws://localhost:8000
+      HEADCRACKER_ENGINE_WS_PUBLIC: wss://headcracker.jeremyfabiano.com
       HEADCRACKER_DEMO_GUEST_ID: HC-DEMO-LOCAL
     depends_on:
       - engine
@@ -28,7 +28,7 @@ services:
     build:
       context: ./engine
     ports:
-      - "8000:8000"
+      - "127.0.0.1:18101:8000"
     environment:
       HF_HOME: /cache/huggingface
       TORCH_HOME: /cache/torch
