@@ -115,6 +115,19 @@ spec:
                 - -ec
               args:
                 - |
+                  if ! kubectl -n head-cracker get secret head-cracker-runtime >/dev/null 2>&1; then
+                    echo "Creating HeadCracker runtime Secret inside the cluster"
+                    APP_KEY="base64:$(head -c 32 /dev/urandom | base64 | tr -d '\n')"
+                    DEMO_ID="HC-$(head -c 24 /dev/urandom | base64 | tr '/+' '_-' | tr -d '=\n')"
+
+                    kubectl -n head-cracker create secret generic head-cracker-runtime \
+                      --from-literal=APP_KEY="$APP_KEY" \
+                      --from-literal=HEADCRACKER_DEMO_GUEST_ID="$DEMO_ID"
+
+                    unset APP_KEY DEMO_ID
+                    echo "Runtime Secret created; values were not written to Git or logs."
+                  fi
+
                   if [ -f /workspace/SKIP ]; then
                     echo "No source change; deployment skipped."
                     exit 0
@@ -125,11 +138,21 @@ spec:
 
                   echo "Restarting HeadCracker workloads for commit $COMMIT"
 
-                  kubectl -n head-cracker rollout restart deployment/head-cracker-web
-                  kubectl -n head-cracker rollout restart deployment/head-cracker-engine
+                  for DEPLOYMENT in \
+                    head-cracker-web \
+                    head-cracker-engine \
+                    head-cracker-proxy
+                  do
+                    kubectl -n head-cracker rollout restart deployment/"$DEPLOYMENT"
+                  done
 
-                  kubectl -n head-cracker rollout status deployment/head-cracker-web --timeout=900s
-                  kubectl -n head-cracker rollout status deployment/head-cracker-engine --timeout=900s
+                  for DEPLOYMENT in \
+                    head-cracker-web \
+                    head-cracker-engine \
+                    head-cracker-proxy
+                  do
+                    kubectl -n head-cracker rollout status deployment/"$DEPLOYMENT" --timeout=900s
+                  done
 
                   printf '%s\n' "$COMMIT" > /state/last-successful-commit.tmp
                   mv /state/last-successful-commit.tmp /state/last-successful-commit
