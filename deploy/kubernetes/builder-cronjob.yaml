@@ -1,0 +1,150 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: head-cracker-builder
+  namespace: build-system
+spec:
+  schedule: "* * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 3600
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: head-cracker-builder
+            app.kubernetes.io/part-of: head-cracker
+        spec:
+          serviceAccountName: head-cracker-builder
+          restartPolicy: Never
+          nodeSelector:
+            kubernetes.io/hostname: home-lab
+
+          initContainers:
+            - name: checkout
+              image: alpine/git:latest
+              command:
+                - /bin/sh
+                - -ec
+              args:
+                - |
+                  mkdir -p /state
+
+                  REMOTE_SHA="$(git ls-remote https://github.com/cyberfab007/head-cracker.git refs/heads/main | awk '{print $1}')"
+                  test -n "$REMOTE_SHA"
+                  printf '%s\n' "$REMOTE_SHA" > /workspace/commit
+
+                  LAST_SHA="$(cat /state/last-successful-commit 2>/dev/null || true)"
+
+                  if [ "$REMOTE_SHA" = "$LAST_SHA" ]; then
+                    echo "head-cracker already deployed at $REMOTE_SHA"
+                    touch /workspace/SKIP
+                    exit 0
+                  fi
+
+                  echo "New head-cracker commit: $REMOTE_SHA"
+
+                  git clone \
+                    --depth=1 \
+                    --branch main \
+                    https://github.com/cyberfab007/head-cracker.git \
+                    /workspace/repo
+
+                  cd /workspace/repo
+                  test "$(git rev-parse HEAD)" = "$REMOTE_SHA"
+                  test -f laravel/Dockerfile
+                  test -f engine/Dockerfile
+              volumeMounts:
+                - name: workspace
+                  mountPath: /workspace
+                - name: state
+                  mountPath: /state
+
+            - name: build
+              image: moby/buildkit:latest
+              command:
+                - /bin/sh
+                - -ec
+              args:
+                - |
+                  if [ -f /workspace/SKIP ]; then
+                    echo "No source change; builds skipped."
+                    exit 0
+                  fi
+
+                  COMMIT="$(cat /workspace/commit)"
+                  echo "Building head-cracker commit $COMMIT on home-lab"
+
+                  echo "Building Laravel image"
+                  buildctl \
+                    --addr tcp://buildkit.build-system.svc.cluster.local:1234 \
+                    build \
+                    --progress plain \
+                    --frontend dockerfile.v0 \
+                    --local context=/workspace/repo/laravel \
+                    --local dockerfile=/workspace/repo/laravel \
+                    --opt filename=Dockerfile \
+                    --output type=image,name=10.50.0.4:5000/head-cracker-web:latest,push=true
+
+                  echo "Building engine image"
+                  buildctl \
+                    --addr tcp://buildkit.build-system.svc.cluster.local:1234 \
+                    build \
+                    --progress plain \
+                    --frontend dockerfile.v0 \
+                    --local context=/workspace/repo/engine \
+                    --local dockerfile=/workspace/repo/engine \
+                    --opt filename=Dockerfile \
+                    --output type=image,name=10.50.0.4:5000/head-cracker-engine:latest,push=true
+
+                  touch /workspace/BUILT
+              volumeMounts:
+                - name: workspace
+                  mountPath: /workspace
+
+          containers:
+            - name: deploy
+              image: bitnami/kubectl:latest
+              securityContext:
+                runAsUser: 0
+              command:
+                - /bin/sh
+                - -ec
+              args:
+                - |
+                  if [ -f /workspace/SKIP ]; then
+                    echo "No source change; deployment skipped."
+                    exit 0
+                  fi
+
+                  test -f /workspace/BUILT
+                  COMMIT="$(cat /workspace/commit)"
+
+                  echo "Restarting HeadCracker workloads for commit $COMMIT"
+
+                  kubectl -n head-cracker rollout restart deployment/head-cracker-web
+                  kubectl -n head-cracker rollout restart deployment/head-cracker-engine
+
+                  kubectl -n head-cracker rollout status deployment/head-cracker-web --timeout=900s
+                  kubectl -n head-cracker rollout status deployment/head-cracker-engine --timeout=900s
+
+                  printf '%s\n' "$COMMIT" > /state/last-successful-commit.tmp
+                  mv /state/last-successful-commit.tmp /state/last-successful-commit
+
+                  echo "head-cracker deployed successfully at $COMMIT"
+              volumeMounts:
+                - name: workspace
+                  mountPath: /workspace
+                - name: state
+                  mountPath: /state
+
+          volumes:
+            - name: workspace
+              emptyDir: {}
+            - name: state
+              hostPath:
+                path: /var/lib/ichoronium/build-state/head-cracker
+                type: DirectoryOrCreate
