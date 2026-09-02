@@ -10,10 +10,14 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        $token = config('services.headcracker.default_guest_id');
+        $token = trim((string) config('services.headcracker.default_guest_id'));
+
+        if ($token === '') {
+            return;
+        }
 
         GuestAccessToken::query()->updateOrCreate(
-            ['label' => 'Local demo guest'],
+            ['label' => 'Runtime demo guest'],
             [
                 'token_hash' => Hash::make($token),
                 'active' => true,
