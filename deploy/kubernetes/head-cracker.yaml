@@ -103,18 +103,18 @@ spec:
       nodeSelector:
         ichoronium.io/persistent-storage: "true"
       initContainers:
-        - name: prepare-sqlite
+        - name: prepare-data
           image: busybox:1.37
           command:
             - sh
             - -ec
           args:
             - |
-              touch /db/database.sqlite
-              chmod 0666 /db/database.sqlite
+              touch /data/database.sqlite /data/.env
+              chmod 0666 /data/database.sqlite /data/.env
           volumeMounts:
-            - name: database
-              mountPath: /db
+            - name: data
+              mountPath: /data
       containers:
         - name: web
           image: 10.50.0.4:5000/head-cracker-web:latest
@@ -122,9 +122,6 @@ spec:
           ports:
             - name: http
               containerPort: 8000
-          envFrom:
-            - secretRef:
-                name: head-cracker-env
           env:
             - name: APP_NAME
               value: HeadCracker
@@ -184,11 +181,14 @@ spec:
               cpu: "2"
               memory: 1Gi
           volumeMounts:
-            - name: database
+            - name: data
               mountPath: /var/www/html/database/database.sqlite
               subPath: database.sqlite
+            - name: data
+              mountPath: /var/www/html/.env
+              subPath: .env
       volumes:
-        - name: database
+        - name: data
           persistentVolumeClaim:
             claimName: head-cracker-db
 ---
