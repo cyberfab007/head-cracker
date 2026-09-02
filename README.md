@@ -19,11 +19,14 @@ Unity later  -> can consume the same saved trace format
 - Engine API: `http://localhost:8000`
 - Engine health: `http://localhost:8000/health`
 - Engine metadata: `http://localhost:8000/meta?model_id=gpt2&driver_key=tl_gpt`
-- Production domain target: `https://headcraker.jeremyfabiano.com`
+- Production domain target: `https://headcracker.jeremyfabiano.com`
 
 ## Run With Docker
 
+Set a local guest ID in your shell, then start the stack:
+
 ```bash
+export HEADCRACKER_DEMO_GUEST_ID="choose-a-local-only-guest-id"
 docker compose up --build
 ```
 
@@ -35,13 +38,7 @@ The website includes:
 - Scientific Method: defensive interpretability workflow and research boundaries.
 - GitHub: public install path and stack summary.
 
-For the local open-source demo, the seeded guest ID is:
-
-```text
-HC-DEMO-LOCAL
-```
-
-That ID is rate-limited and capped by Laravel. Prompt execution is gated through `POST /api/runs`; the frontend only opens the engine stream after Laravel authorizes the run.
+The guest ID is rate-limited and capped by Laravel. Prompt execution is gated through `POST /api/runs`; the frontend only opens the engine stream after Laravel authorizes the run.
 
 ## Project Layout
 
@@ -57,6 +54,8 @@ laravel/
   resources/js/app.jsx # Arwes React console
   resources/css/app.css
   Dockerfile
+
+deploy/kubernetes/     # Fleet workload + shared BuildKit builder
 
 docker-compose.yml
 ```
@@ -93,7 +92,9 @@ docker run --rm -v "$PWD/laravel":/app -w /app node:24-alpine sh -lc "npm audit 
 
 ## Production Security Notes
 
-For `https://headcraker.jeremyfabiano.com`, generate a fresh `APP_KEY`, keep `APP_DEBUG=false`, serve only over HTTPS, and keep `.env` outside source control. The Laravel app sets security headers, denies framing, uses a restrictive CSP for the public domain and local dev endpoints, enables HSTS on secure requests, and throttles prompt-run API routes. The engine WebSocket should be reverse-proxied behind HTTPS/WSS before public launch.
+Production secrets are not stored in this public repository. Fleet deploys the Kubernetes resources, and the in-cluster builder creates the `head-cracker-runtime` Secret on first run with a random Laravel `APP_KEY` and random guest ID. The values are consumed by the Laravel deployment and are not written to Git or build logs.
+
+Keep `APP_DEBUG=false`, serve only over HTTPS, and keep local `.env` files outside source control. The Laravel app sets security headers, denies framing, uses a restrictive CSP for the public domain and local dev endpoints, enables HSTS on secure requests, and throttles prompt-run API routes. The engine WebSocket is reverse-proxied behind HTTPS/WSS in Kubernetes.
 
 ## Current Run Flow
 
