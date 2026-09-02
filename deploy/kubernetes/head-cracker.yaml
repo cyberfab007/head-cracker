@@ -110,8 +110,8 @@ spec:
             - -ec
           args:
             - |
-              touch /data/database.sqlite /data/.env
-              chmod 0666 /data/database.sqlite /data/.env
+              touch /data/database.sqlite
+              chmod 0660 /data/database.sqlite
           volumeMounts:
             - name: data
               mountPath: /data
@@ -122,6 +122,9 @@ spec:
           ports:
             - name: http
               containerPort: 8000
+          envFrom:
+            - secretRef:
+                name: head-cracker-runtime
           env:
             - name: APP_NAME
               value: HeadCracker
@@ -153,8 +156,6 @@ spec:
               value: http://head-cracker-engine:8000
             - name: HEADCRACKER_ENGINE_WS_PUBLIC
               value: wss://headcracker.jeremyfabiano.com
-            - name: HEADCRACKER_DEMO_GUEST_ID
-              value: HC-DEMO-LOCAL
           startupProbe:
             httpGet:
               path: /
@@ -184,9 +185,6 @@ spec:
             - name: data
               mountPath: /var/www/html/database/database.sqlite
               subPath: database.sqlite
-            - name: data
-              mountPath: /var/www/html/.env
-              subPath: .env
       volumes:
         - name: data
           persistentVolumeClaim:
