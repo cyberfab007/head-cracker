@@ -18,7 +18,6 @@ class DatabaseSeeder extends Seeder
                 'token_hash' => Hash::make($token),
                 'active' => true,
                 'max_runs' => 25,
-                'runs_used' => 0,
                 'rate_limit_per_hour' => 6,
                 'expires_at' => null,
             ],
