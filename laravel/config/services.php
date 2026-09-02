@@ -38,7 +38,7 @@ return [
     'headcracker' => [
         'engine_http' => env('HEADCRACKER_ENGINE_HTTP', 'http://engine:8000'),
         'engine_ws_public' => env('HEADCRACKER_ENGINE_WS_PUBLIC', 'ws://localhost:8000'),
-        'default_guest_id' => env('HEADCRACKER_DEMO_GUEST_ID', 'HC-DEMO-LOCAL'),
+        'default_guest_id' => env('HEADCRACKER_DEMO_GUEST_ID'),
     ],
 
 ];
