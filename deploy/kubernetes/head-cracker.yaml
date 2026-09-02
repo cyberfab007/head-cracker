@@ -1,0 +1,338 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: head-cracker
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: head-cracker-db
+  namespace: head-cracker
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path-home-lab
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: head-cracker-engine-cache
+  namespace: head-cracker
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path-home-lab
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: head-cracker-proxy
+  namespace: head-cracker
+data:
+  default.conf: |
+    server {
+        listen 80;
+        server_name headcracker.jeremyfabiano.com;
+        client_max_body_size 8m;
+
+        location ^~ /ws/ {
+            proxy_pass http://head-cracker-engine:8000;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_set_header Host $host;
+            proxy_set_header X-Forwarded-Host $host;
+            proxy_set_header X-Forwarded-Proto https;
+            proxy_set_header X-Forwarded-Port 443;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_read_timeout 3600s;
+            proxy_send_timeout 3600s;
+        }
+
+        location / {
+            proxy_pass http://head-cracker-web:8000;
+            proxy_http_version 1.1;
+            proxy_set_header Host $host;
+            proxy_set_header X-Forwarded-Host $host;
+            proxy_set_header X-Forwarded-Proto https;
+            proxy_set_header X-Forwarded-Port 443;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_read_timeout 120s;
+        }
+    }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: head-cracker-web
+  namespace: head-cracker
+spec:
+  selector:
+    app.kubernetes.io/name: head-cracker
+    app.kubernetes.io/component: web
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: head-cracker-web
+  namespace: head-cracker
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: head-cracker
+      app.kubernetes.io/component: web
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: head-cracker
+        app.kubernetes.io/component: web
+    spec:
+      nodeSelector:
+        ichoronium.io/persistent-storage: "true"
+      initContainers:
+        - name: prepare-sqlite
+          image: busybox:1.37
+          command:
+            - sh
+            - -ec
+          args:
+            - |
+              touch /db/database.sqlite
+              chmod 0666 /db/database.sqlite
+          volumeMounts:
+            - name: database
+              mountPath: /db
+      containers:
+        - name: web
+          image: 10.50.0.4:5000/head-cracker-web:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8000
+          envFrom:
+            - secretRef:
+                name: head-cracker-env
+          env:
+            - name: APP_NAME
+              value: HeadCracker
+            - name: APP_ENV
+              value: production
+            - name: APP_DEBUG
+              value: "false"
+            - name: APP_URL
+              value: https://headcracker.jeremyfabiano.com
+            - name: LOG_CHANNEL
+              value: stderr
+            - name: DB_CONNECTION
+              value: sqlite
+            - name: DB_DATABASE
+              value: /var/www/html/database/database.sqlite
+            - name: CACHE_STORE
+              value: database
+            - name: SESSION_DRIVER
+              value: database
+            - name: SESSION_ENCRYPT
+              value: "true"
+            - name: SESSION_DOMAIN
+              value: .headcracker.jeremyfabiano.com
+            - name: SESSION_SECURE_COOKIE
+              value: "true"
+            - name: QUEUE_CONNECTION
+              value: database
+            - name: HEADCRACKER_ENGINE_HTTP
+              value: http://head-cracker-engine:8000
+            - name: HEADCRACKER_ENGINE_WS_PUBLIC
+              value: wss://headcracker.jeremyfabiano.com
+            - name: HEADCRACKER_DEMO_GUEST_ID
+              value: HC-DEMO-LOCAL
+          startupProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 30
+            failureThreshold: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 192Mi
+            limits:
+              cpu: "2"
+              memory: 1Gi
+          volumeMounts:
+            - name: database
+              mountPath: /var/www/html/database/database.sqlite
+              subPath: database.sqlite
+      volumes:
+        - name: database
+          persistentVolumeClaim:
+            claimName: head-cracker-db
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: head-cracker-engine
+  namespace: head-cracker
+spec:
+  selector:
+    app.kubernetes.io/name: head-cracker
+    app.kubernetes.io/component: engine
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: head-cracker-engine
+  namespace: head-cracker
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: head-cracker
+      app.kubernetes.io/component: engine
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: head-cracker
+        app.kubernetes.io/component: engine
+    spec:
+      nodeSelector:
+        ichoronium.io/persistent-storage: "true"
+      containers:
+        - name: engine
+          image: 10.50.0.4:5000/head-cracker-engine:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8000
+          env:
+            - name: HF_HOME
+              value: /cache/huggingface
+            - name: TORCH_HOME
+              value: /cache/torch
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 30
+            failureThreshold: 5
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: "4"
+              memory: 8Gi
+          volumeMounts:
+            - name: cache
+              mountPath: /cache
+      volumes:
+        - name: cache
+          persistentVolumeClaim:
+            claimName: head-cracker-engine-cache
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: head-cracker-proxy
+  namespace: head-cracker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: head-cracker
+      app.kubernetes.io/component: proxy
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: head-cracker
+        app.kubernetes.io/component: proxy
+    spec:
+      nodeSelector:
+        ichoronium.io/persistent-storage: "true"
+      containers:
+        - name: nginx
+          image: nginx:1.29-alpine
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 80
+          readinessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+          volumeMounts:
+            - name: config
+              mountPath: /etc/nginx/conf.d/default.conf
+              subPath: default.conf
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: head-cracker-proxy
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: head-cracker
+  namespace: head-cracker
+spec:
+  selector:
+    app.kubernetes.io/name: head-cracker
+    app.kubernetes.io/component: proxy
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
