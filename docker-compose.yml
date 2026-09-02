@@ -20,7 +20,7 @@ services:
       QUEUE_CONNECTION: database
       HEADCRACKER_ENGINE_HTTP: http://engine:8000
       HEADCRACKER_ENGINE_WS_PUBLIC: wss://headcracker.jeremyfabiano.com
-      HEADCRACKER_DEMO_GUEST_ID: HC-DEMO-LOCAL
+      HEADCRACKER_DEMO_GUEST_ID: ${HEADCRACKER_DEMO_GUEST_ID:-}
     depends_on:
       - engine
 
