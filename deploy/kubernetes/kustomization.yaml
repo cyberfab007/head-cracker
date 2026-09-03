@@ -4,3 +4,13 @@ resources:
   - head-cracker.yaml
   - builder-rbac.yaml
   - builder-cronjob.yaml
+
+patches:
+  - target:
+      kind: CronJob
+      name: head-cracker-builder
+      namespace: build-system
+    patch: |-
+      - op: replace
+        path: /spec/schedule
+        value: "18 * * * *"
