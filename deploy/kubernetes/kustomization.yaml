@@ -13,4 +13,4 @@ patches:
     patch: |-
       - op: replace
         path: /spec/schedule
-        value: "18 * * * *"
+        value: "18 3 * * *"
